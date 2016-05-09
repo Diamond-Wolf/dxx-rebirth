@@ -7,6 +7,9 @@
 
 namespace TrackerUtil
 {
+	// Request a UUID
+	void ReqUUID( dxx_http_callback cb );
+
 	// Request a games list
 	void ReqGames( dxx_http_callback cb );
 

@@ -171,8 +171,7 @@ COPYRIGHT 1993-1999 PARALLAX SOFTWARE CORPORATION.  ALL RIGHTS RESERVED.
 #define GRAPHICS_DYNLIGHTCOLOR_NAME_TEXT "dynlightcolor"
 #define PLX_VERSION_HEADER_TEXT "[plx version]"
 #define TRACKER_HEADER_TEXT "[tracker]"
-#define TRACKER_UID1_TEXT "uid1"
-#define TRACKER_UID2_TEXT "uid2"
+#define TRACKER_UUID_TEXT "uuid"
 #define END_TEXT	"[end]"
 
 #define SAVE_FILE_ID MAKE_SIG('D','P','L','R')
@@ -211,9 +210,6 @@ int new_player_config()
 	range_for (auto &i, saved_games)
 		i.name[0] = 0;
 #endif
-	uint32_t iTrackerUid1 = time( NULL ) * d_rand();
-	uint32_t iTrackerUid2 = d_rand() * d_rand();
-
 	InitWeaponOrdering (); //setup default weapon priorities
 	PlayerCfg.ControlType=0; // Assume keyboard
 	PlayerCfg.KeySettings = DefaultKeySettings;
@@ -239,8 +235,7 @@ int new_player_config()
 	PlayerCfg.ReticleType = RET_TYPE_CLASSIC;
 	PlayerCfg.ReticleRGBA[0] = RET_COLOR_DEFAULT_R; PlayerCfg.ReticleRGBA[1] = RET_COLOR_DEFAULT_G; PlayerCfg.ReticleRGBA[2] = RET_COLOR_DEFAULT_B; PlayerCfg.ReticleRGBA[3] = RET_COLOR_DEFAULT_A;
 	PlayerCfg.ReticleSize = 0;
-	PlayerCfg.TrackerUID1 = iTrackerUid1;
-	PlayerCfg.TrackerUID2 = iTrackerUid2;
+	PlayerCfg.TrackerUUID = "";
 	PlayerCfg.HudMode = HudType::Standard;
 #if defined(DXX_BUILD_DESCENT_I)
 	PlayerCfg.BombGauge = 1;
@@ -429,11 +424,8 @@ static void read_player_dxx(const char *filename)
 				if( !value )
 					continue;
 
-				if( !strcmp( line, TRACKER_UID1_TEXT ) )
-					PlayerCfg.TrackerUID1 = atoi( value );
-
-				else if( !strcmp( line, TRACKER_UID2_TEXT ) )
-					PlayerCfg.TrackerUID2 = atoi( value );
+				if( !strcmp( line, TRACKER_UUID_TEXT ) )
+					PlayerCfg.TrackerUUID.copy_if(reinterpret_cast<const char*>(value), UUID_LEN);
 			}
 		}
 		else if (!strcmp(line,COCKPIT_HEADER_TEXT))
@@ -763,8 +755,7 @@ static int write_player_dxx(const char *filename)
 		PHYSFSX_printf(fout,"0=" WEAPON_KEYv2_VALUE_TEXT "\n",PlayerCfg.KeySettingsRebirth[27],PlayerCfg.KeySettingsRebirth[28],PlayerCfg.KeySettingsRebirth[29]);
 		PHYSFSX_printf(fout,END_TEXT "\n");
 		PHYSFSX_printf(fout,TRACKER_HEADER_TEXT "\n");
-		PHYSFSX_printf(fout,TRACKER_UID1_TEXT "=%u\n", PlayerCfg.TrackerUID1 );
-		PHYSFSX_printf(fout,TRACKER_UID2_TEXT "=%u\n", PlayerCfg.TrackerUID2 );
+		PHYSFSX_printf(fout,TRACKER_UUID_TEXT "=%s\n", PlayerCfg.TrackerUUID.data() );
 		PHYSFSX_printf(fout,END_TEXT "\n" );
 		PHYSFSX_printf(fout,COCKPIT_HEADER_TEXT "\n");
 #if defined(DXX_BUILD_DESCENT_I)

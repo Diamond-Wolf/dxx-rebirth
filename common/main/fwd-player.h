@@ -42,6 +42,7 @@ COPYRIGHT 1993-1999 PARALLAX SOFTWARE CORPORATION.  ALL RIGHTS RESERVED.
 #define AFTERBURNER_MAX_TIME    (F1_0*5)    // Max time afterburner can be on.
 #endif
 #define CALLSIGN_LEN                8       // so can use as filename (was: 12)
+#define UUID_LEN                    36      // UUID length
 
 // Amount of time player is cloaked.
 #define CLOAK_TIME_MAX          (F1_0*30)

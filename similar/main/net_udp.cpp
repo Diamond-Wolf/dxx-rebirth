@@ -672,6 +672,19 @@ static int udp_receive_packet(RAIIsocket &sock, ubyte *text, int len, struct _so
 /* General UDP functions - END */
 
 /* Tracker callback functions */
+static void dxx_tracker_new_uuid( Json::Value &data )
+{
+	// Get this uuid value that the tracker has sent us
+	std::string sUuid = data["uuid"].asString();
+
+	// Let's store it
+	PlayerCfg.TrackerUUID.copy_if(reinterpret_cast<const char*>(sUuid.c_str()), UUID_LEN);
+	printf( "Saving new pilot UUID '%s'\n", PlayerCfg.TrackerUUID.data() );
+
+	// Save it up
+	write_player_file();
+}
+
 static void dxx_tracker_reqgames( Json::Value &data )
 {
 	// Let's iterate through some games
@@ -777,7 +790,7 @@ static void dxx_tracker_register( Json::Value &data )
 	// See if we got something
 	if( data.isMember( "error" ) && data["error"].isInt() && data["error"].asInt() != 0 )
 	{
-		printf( "err %i\n", data["error"].asInt() );
+		printf( "err dxx_tracker_register %i\n", data["error"].asInt() );
 		return;
 	}
 
@@ -794,9 +807,9 @@ static void dxx_tracker_unregister( Json::Value &data )
 	if( data.isMember( "error" ) )
 	{
 		if( data["error"].isInt() && data["error"].asInt() != 0 )
-			printf( "err %i\n", data["error"].asInt() );
+			printf( "err dxx_tracker_unregister %i\n", data["error"].asInt() );
 		else
-			printf( "err %s\n", data["error"].asString().c_str() );
+			printf( "err dxx_tracker_unregister %s\n", data["error"].asString().c_str() );
 	}
 }
 
@@ -805,13 +818,26 @@ static void dxx_tracker_verify( Json::Value &data )
 	// Error check
 	if( data.isMember( "error" ) && data["error"].isInt() && data["error"].asInt() != 0 )
 	{
-		printf( "err %i\n", data["error"].asInt() );
+		printf( "err dxx_tracker_verify %i\n", data["error"].asInt() );
 		return;
 	}
 
 	// Otherwise, we're going to check our validity
 	if( data["tracker_status"] == 1 )
 		iTrackerVerified = 1;
+}
+
+static void dxx_tracker_ensure_uuid()
+{
+	// Sanity, do we already have a uuid?
+	if( PlayerCfg.TrackerUUID.data()[0] != '\0' )
+	{
+		printf( "Already have UUID %s\n", PlayerCfg.TrackerUUID.data() );
+		return;
+	}
+
+	// Request it now, we'll set it in the callback
+	TrackerUtil::ReqUUID( dxx_tracker_new_uuid );
 }
 /* Tracker callbacks finish */
 
@@ -992,6 +1018,9 @@ void net_udp_manual_join_game()
 	
 	net_udp_init();
 
+	// Ensure we have a tracker UUID for this pilot
+	dxx_tracker_ensure_uuid();
+
 	snprintf(dj->addrbuf, sizeof(dj->addrbuf), "%s", GameArg.MplUdpHostAddr.c_str());
 	snprintf(dj->hostportbuf, sizeof(dj->hostportbuf), "%hu", GameArg.MplUdpHostPort ? GameArg.MplUdpHostPort : UDP_PORT_DEFAULT);
 
@@ -1032,6 +1061,7 @@ static int net_udp_list_join_poll( newmenu *menu,const d_event &event, direct_jo
 #endif
 #ifdef USE_TRACKER
 			TrackerUtil::ReqGames( dxx_tracker_reqgames );
+			dxx_tracker_ensure_uuid();
 #endif
 			break;
 		}
@@ -1077,6 +1107,7 @@ static int net_udp_list_join_poll( newmenu *menu,const d_event &event, direct_jo
 #endif
 #ifdef USE_TRACKER
 				TrackerUtil::ReqGames( dxx_tracker_reqgames );
+				dxx_tracker_ensure_uuid();
 #endif
 				// All done
 				break;
@@ -1103,6 +1134,7 @@ static int net_udp_list_join_poll( newmenu *menu,const d_event &event, direct_jo
 				
 				// Request from the tracker
 				TrackerUtil::ReqGames( dxx_tracker_reqgames );
+				dxx_tracker_ensure_uuid();
 				
 				// Break off
 				break;
@@ -1318,8 +1350,7 @@ static void net_udp_send_sequence_packet(UDP_sequence_packet seq, const _sockadd
 	memcpy(&buf[len], seq.player.callsign.buffer(), CALLSIGN_LEN+1);		len += CALLSIGN_LEN+1;
 	buf[len] = seq.player.connected;				len++;
 	buf[len] = seq.player.rank;					len++;
-	PUT_INTEL_INT( &buf[len], seq.player.tracker_uid1 );		len += 4;
-	PUT_INTEL_INT( &buf[len], seq.player.tracker_uid2 );		len += 4;
+	memcpy(&buf[len], seq.player.tracker_uuid.data(), UUID_LEN + 1 );		len += UUID_LEN + 1;
 	dxx_sendto(recv_addr, UDP_Socket[0], buf, 0);
 }
 
@@ -1331,8 +1362,7 @@ static void net_udp_receive_sequence_packet(ubyte *data, UDP_sequence_packet *se
 	memcpy(seq->player.callsign.buffer(), &(data[len]), CALLSIGN_LEN+1);	len += CALLSIGN_LEN+1;
 	seq->player.connected = data[len];				len++;
 	memcpy (&(seq->player.rank),&(data[len]),1);			len++;
-	seq->player.tracker_uid1 = GET_INTEL_INT( data + len );		len += 4;
-	seq->player.tracker_uid2 = GET_INTEL_INT( data + len );		len += 4;
+	memcpy(seq->player.tracker_uuid.data(), &data[len], UUID_LEN);	len += UUID_LEN + 1;
 	
 	if (multi_i_am_master())
 		seq->player.protocol.udp.addr = sender_addr;
@@ -1364,8 +1394,7 @@ void net_udp_init()
 	UDP_Seq.player.callsign = get_local_player().callsign;
 
 	UDP_Seq.player.rank=GetMyNetRanking();
-	UDP_Seq.player.tracker_uid1 = PlayerCfg.TrackerUID1;
-	UDP_Seq.player.tracker_uid2 = PlayerCfg.TrackerUID2;
+	UDP_Seq.player.tracker_uuid = PlayerCfg.TrackerUUID;
 
 	multi_new_game();
 	net_udp_flush();
@@ -1539,8 +1568,7 @@ static net_udp_new_player(UDP_sequence_packet *their)
 
 	ClipRank (&their->player.rank);
 	Netgame.players[pnum].rank=their->player.rank;
-	Netgame.players[pnum].tracker_uid1 = their->player.tracker_uid1;
-	Netgame.players[pnum].tracker_uid2 = their->player.tracker_uid2;
+	Netgame.players[pnum].tracker_uuid = their->player.tracker_uuid;
 
 	Players[pnum].connected = CONNECT_PLAYING;
 	Players[pnum].net_kills_total = 0;
@@ -2229,8 +2257,7 @@ static void net_udp_add_player(UDP_sequence_packet *p)
 	Netgame.players[N_players].protocol.udp.addr = p->player.protocol.udp.addr;
 	Netgame.players[N_players].rank=p->player.rank;
 	Netgame.players[N_players].connected = CONNECT_PLAYING;
-	Netgame.players[N_players].tracker_uid1 = p->player.tracker_uid1;
-	Netgame.players[N_players].tracker_uid2 = p->player.tracker_uid2;
+	Netgame.players[N_players].tracker_uuid = p->player.tracker_uuid;
 	Players[N_players].KillGoalCount=0;
 	Players[N_players].connected = CONNECT_PLAYING;
 	Netgame.players[N_players].LastPacketTime = timer_query();
@@ -2264,8 +2291,7 @@ static void net_udp_remove_player(UDP_sequence_packet *p)
 		Netgame.players[i].callsign = Netgame.players[i+1].callsign;
 		Netgame.players[i].protocol.udp.addr = Netgame.players[i+1].protocol.udp.addr;
 		Netgame.players[i].rank=Netgame.players[i+1].rank;
-		Netgame.players[i].tracker_uid1 = Netgame.players[i + 1].tracker_uid1;
-		Netgame.players[i].tracker_uid2 = Netgame.players[i + 1].tracker_uid2;
+		Netgame.players[i].tracker_uuid = Netgame.players[i + 1].tracker_uuid;
 		ClipRank (&Netgame.players[i].rank);
 	}
 		
@@ -2497,8 +2523,7 @@ static uint_fast32_t net_udp_prepare_heavy_game_info(const _sockaddr *addr, ubyt
 			memcpy(&buf[len], Netgame.players[i].callsign.buffer(), CALLSIGN_LEN+1); 	len += CALLSIGN_LEN+1;
 			buf[len] = Netgame.players[i].connected;				len++;
 			buf[len] = Netgame.players[i].rank;					len++;
-			PUT_INTEL_INT( buf + len, Netgame.players[i].tracker_uid1 );		len += 4;
-			PUT_INTEL_INT( buf + len, Netgame.players[i].tracker_uid2 );		len += 4;
+			memcpy(&buf[len], Netgame.players[i].tracker_uuid.data(), UUID_LEN+1);	len += UUID_LEN + 1;
 			if (addr && *addr == Netgame.players[i].protocol.udp.addr)
 				your_index = i;
 		}
@@ -2739,8 +2764,8 @@ static void net_udp_process_game_info(const uint8_t *data, uint_fast32_t, const 
 			len += CALLSIGN_LEN+1;
 			i.connected = data[len];				len++;
 			i.rank = data[len];					len++;
-			i.tracker_uid1 = GET_INTEL_INT( &data[len] );		len += 4;
-			i.tracker_uid2 = GET_INTEL_INT( &data[len] );		len += 4;
+			i.tracker_uuid.copy_if(reinterpret_cast<const char *>(&data[len]), UUID_LEN);
+			len += UUID_LEN + 1;
 		}
 		Netgame.levelnum = GET_INTEL_INT(&(data[len]));					len += 4;
 		Netgame.gamemode = data[len];							len++;
@@ -3776,6 +3801,9 @@ int net_udp_setup_game()
 
 	multi_new_game();
 
+	// Ensure we have a tracker UUID for this pilot
+	dxx_tracker_ensure_uuid();
+
 	change_playernum_to(0);
 
 	{
@@ -4299,8 +4327,7 @@ abort:
 			{
 				Netgame.players[N_players].callsign = Netgame.players[i].callsign;
 				Netgame.players[N_players].rank=Netgame.players[i].rank;
-				Netgame.players[N_players].tracker_uid1 = Netgame.players[i].tracker_uid1;
-				Netgame.players[N_players].tracker_uid2 = Netgame.players[i].tracker_uid2;
+				Netgame.players[N_players].tracker_uuid = Netgame.players[i].tracker_uuid;
 				ClipRank (&Netgame.players[N_players].rank);
 			}
 			Players[N_players].connected = CONNECT_PLAYING;

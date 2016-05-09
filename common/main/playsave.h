@@ -135,8 +135,7 @@ struct player_config : prohibit_void_ptr<player_config>
 	int GuidedInBigWindow;
 	ntstring<GUIDEBOT_NAME_LEN> GuidebotName, GuidebotNameReal;
 #endif
-	uint32_t TrackerUID1;
-	uint32_t TrackerUID2;
+	ntstring<UUID_LEN> TrackerUUID;
 #if defined(DXX_BUILD_DESCENT_II)
 	int EscortHotKeys;
 #endif

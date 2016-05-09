@@ -791,8 +791,7 @@ struct netplayer_info : prohibit_void_ptr<netplayer_info>
 	ubyte						rank;
 	fix							ping;
 	fix64							LastPacketTime;
-	uint32_t					tracker_uid1;
-	uint32_t					tracker_uid2;
+	ntstring<UUID_LEN>				tracker_uuid;
 };
 
 #if defined(DXX_BUILD_DESCENT_I) || defined(DXX_BUILD_DESCENT_II)

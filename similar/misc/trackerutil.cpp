@@ -9,6 +9,19 @@
 // Tracker API version
 #define DXX_TRACKER_API_VERSION "v1"
 
+void TrackerUtil::ReqUUID( dxx_http_callback cb )
+{
+	// URL to hit
+	char sUrl[256];
+	sprintf( sUrl, "http://%s/api/%s/pilots/new_uuid",
+		GameArg.MplTrackerHost.c_str(),
+		DXX_TRACKER_API_VERSION
+	);
+
+	// Send off the request
+	CurlUtil::Get( sUrl, cb );
+}
+
 void TrackerUtil::ReqGames( dxx_http_callback cb )
 {
 	// URL to hit
