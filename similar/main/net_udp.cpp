@@ -1350,7 +1350,7 @@ static void net_udp_send_sequence_packet(UDP_sequence_packet seq, const _sockadd
 	memcpy(&buf[len], seq.player.callsign.buffer(), CALLSIGN_LEN+1);		len += CALLSIGN_LEN+1;
 	buf[len] = seq.player.connected;				len++;
 	buf[len] = seq.player.rank;					len++;
-	memcpy(&buf[len], seq.player.tracker_uuid.data(), UUID_LEN + 1 );		len += UUID_LEN + 1;
+	memcpy(&buf[len], seq.player.tracker_uuid.data(), UUID_LEN+1);	len += UUID_LEN + 1;
 	dxx_sendto(recv_addr, UDP_Socket[0], buf, 0);
 }
 
