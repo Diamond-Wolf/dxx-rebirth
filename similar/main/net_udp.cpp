@@ -698,9 +698,9 @@ static void dxx_tracker_reqgames( Json::Value &data )
 		std::string sGameName = data[i]["info"]["name"].asString();
 		std::string sMissionTitle = data[i]["info"]["mission_title"].asString();
 		std::string sMissionName = data[i]["info"]["mission_name"].asString();
-		uint_fast32_t iGameNameLen = sGameName.length();
-		uint_fast32_t iMissionTitleLen = sMissionTitle.length();
-		uint_fast32_t iMissionNameLen = sMissionName.length();
+		uint_fast32_t iGameNameLen = 0;
+		uint_fast32_t iMissionTitleLen = 0;
+		uint_fast32_t iMissionNameLen = 0;
 
 		// Fill in some descent info
 		struct _sockaddr addr;
