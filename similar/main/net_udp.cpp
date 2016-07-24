@@ -726,7 +726,7 @@ static void dxx_tracker_reqgames( Json::Value &data )
 		copy_to_ntstring( (const uint8_t *)sGameName.data(), iGameNameLen, recv_game.game_name );
 		copy_to_ntstring( (const uint8_t *)sMissionTitle.data(), iMissionTitleLen, recv_game.mission_title );
 		copy_to_ntstring( (const uint8_t *)sMissionName.data(), iMissionNameLen, recv_game.mission_name );
-		recv_game.levelnum = data[i]["info"]["level_num"].asInt();
+		recv_game.levelnum = data[i]["info"]["level"].asInt();
 		recv_game.gamemode = data[i]["info"]["mode"]["id"].asInt();
 		recv_game.RefusePlayers = data[i]["info"]["refuse"].asBool() ? 1 : 0;
 		recv_game.difficulty = data[i]["info"]["difficulty"]["id"].asInt();
